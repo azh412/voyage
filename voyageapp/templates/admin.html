@@ -1,0 +1,69 @@
+{% extends "layout.html" %}
+{% load static %}
+
+{% block title %} Voyage Admin {% endblock %}
+{% block body %}
+{% if user.is_authenticated %}
+    {% if user.isAdmin %}
+        {% block script %}
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                fetchusers()
+            })
+            var loadedUsers = false
+            function fetchusers(){
+                var usertable = document.getElementById("usertable")
+                fetch('/getusers', {method: 'GET'})
+                .then(response => response.json())
+                .then(result => {
+                    if(loadedUsers == true){
+                        return
+                    }
+                    loadedUsers = true
+                    document.getElementById("userinfoplaceholder").innerHTML = "Users"
+                    var users = result['users']
+                    var totaltokensused = 0
+                    var usercount = 0
+                    var theader = document.getElementById("theader")
+                    var keyrow = document.createElement("tr")
+                    result['key'].forEach(key => {
+                        var coltorow = document.createElement("th")
+                        coltorow.innerHTML = key
+                        keyrow.appendChild(coltorow)
+                    });
+                    theader.appendChild(keyrow)
+                    users.forEach(user => {
+                        var rowtotable = document.createElement("tr")
+                        usercount++
+                        for(var key in user){
+                            var coltorow = document.createElement("td")
+                            if(key == "tokens_used"){
+                                totaltokensused += user[key]
+                            }
+                            coltorow.innerHTML = user[key]
+                            rowtotable.appendChild(coltorow)
+                        }
+                        usertable.appendChild(rowtotable)
+                    });
+                    var tokenstat = usercount.toString() + " users have consumed " + totaltokensused.toString() + " tokens in total."
+                    document.getElementById("stat1").innerHTML = tokenstat
+                });
+            }
+        </script>
+        {% endblock %}
+        <h1 class="display-1">Administrator</h1>
+        <h1>hi {{user.username}}</h1>
+        <h3 id="stat1"></h3>
+        <h2 id="userinfoplaceholder">fetching users...</h2>
+        <table class="table table-hover table-bordered">
+            <thead id="theader"></thead>
+            <tbody id="usertable"></tbody>
+        </table>
+    {% else %}
+        <h1>woah there</h1>
+        <h3>whatu doin here</h3>
+        <h5>u aint an admin</h5>
+        <h7><a href="{% url 'index' %}">go back home</a></h7>
+    {% endif %}
+{% endif %}
+{% endblock %}

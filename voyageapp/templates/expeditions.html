@@ -1,0 +1,43 @@
+{% extends "layout.html" %}
+{% load static %}
+
+{% block title %} Voyage | Expeditions {% endblock %}
+{% block body %}
+<h1 class="display-1">Expeditions</h1>
+&nbsp;
+<p><strong>Looking for a way to find new topics based on your interests? Receive tailored lessons at <a href="{% url 'index' %}">Explore</a>!</strong></p>
+<h2>Here are your expeditions.</h2>
+{% if user.is_authenticated %}
+    {% if user.onboarded %}
+        {% block script %}
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    document.getElementById("allexpeditions").style.display = "block"
+                })
+            </script>
+        {% endblock %}
+        <div id="allexpeditions">
+            {% for expedition in expeditions %}
+                <div class="card">
+                    <div class="card-body">
+                        <h2 class="card-title">{{ expedition.expedition_name }}</h2>
+                        {% if expedition.chapters_completed == 1 %}
+                            <h4 class="card-subtitle mb-2 text-muted">{{ expedition.chapters_completed }} chapter completed.</h4>
+                        {% else %}
+                            <h4 class="card-subtitle mb-2 text-muted">{{ expedition.chapters_completed }} chapters completed.</h4>
+                        {% endif %}
+                        <a href="#" class="btn btn-primary" onclick="window.location.href='/expeditions/{{ expedition.id }}'">Go</a>                    
+                    </div>
+                </div>
+                &nbsp;
+            {% endfor %}
+            <div class="card">
+                <div class="card-body">
+                    <h2 class="card-title">Start New Expedition</h2>
+                    <a href="startexpedition" class="btn btn-primary">Start</a>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+{% endif %}
+{% endblock %}

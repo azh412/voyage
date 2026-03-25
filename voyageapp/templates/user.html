@@ -1,0 +1,18 @@
+{% extends "layout.html" %}
+{% load static %}
+
+{% block title %} Voyage | User Info {% endblock %}
+{% block body %}
+{% if user.is_authenticated %}
+        {% block script %}
+        <script>
+        </script>
+        {% endblock %}
+        <h1 class="display-1">User Insights</h1>
+        <h1 style="font-size: 4em;">{{user.username}}</h1>
+        <h3>Based on what you've been learning on Voyage, here's what we think you're focused on right now.</h3>
+        {% for interest in interests %}
+            <h1 style="font-size: {{interest.1}}em;">{{interest.0}}</h1>
+        {% endfor %}
+{% endif %}
+{% endblock %}

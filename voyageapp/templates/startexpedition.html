@@ -1,0 +1,86 @@
+{% extends "layout.html" %}
+{% load static %}
+
+{% block title %} Voyage | Start Expedition {% endblock %}
+{% block body %}
+<h1 class="display-1 d-flex justify-content-center">Expeditions</h1>
+{% if user.is_authenticated %}
+    {% if user.onboarded %}
+        {% block script %}
+            <script>
+                queryplaceholders = [
+                    "programming in python",
+                    "calculus",
+                    "soccer defending",
+                    "basketball handling",
+                    "sport analysis",
+                    "boxing techniques",
+                    "database management",
+                    "data science",
+                    "machine learning",
+                    "artificial intelligence",
+                    "computer vision",
+                    "natural language processing",
+                    "web development",
+                    "web design",
+                    "computer graphics"
+                ]
+                document.addEventListener('DOMContentLoaded', function() {
+                    document.getElementById("expeditionname").placeholder = queryplaceholders[Math.floor(Math.random() * queryplaceholders.length)];
+                })
+                function createexpedition(title){
+                    document.getElementById("creatingplace").innerHTML = "Creating expedition..."
+                    document.getElementById("errorbox").innerHTML = ""
+                    if(title.length < 2){
+                        document.getElementById("expeditionname").value = ""
+                        return
+                    }
+                    document.getElementById("customsubmit").disabled = true
+                    console.log(title)
+                    fetch('/createexpedition', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            title: title
+                        })
+                    }).then(response => response.json()).then(result => {
+                        if (result['error']){
+                            document.getElementById("errorbox").innerHTML = result['error']
+                            document.getElementById("customsubmit").disabled = false
+                        }
+                        window.location.href = "https://voyageai.co/expeditions";
+                    })
+                }
+            </script>
+        {% endblock %}
+        <h1 class="d-flex justify-content-center">Your expedition starts here.</h1>
+        &nbsp;
+        <h3 id="errorbox" class="d-flex justify-content-center"></h3>
+        <h1 class="d-flex justify-content-center">Recommended topics based on your interests:</h1>
+        <div class="d-flex justify-content-center">
+        {% for interest in recommended %}
+            <input class="btn btn-primary rounded-pill d-flex justify-content-center" type="button" value="{{ interest.topic_name }}" name='{{ interest.topic_name }}' onclick="createexpedition('{{ interest.topic_name }}')"></input>
+        {% endfor %}
+        </div>
+        &nbsp;
+        <div class="d-flex justify-content-center">
+            <h1>Or...</h1>
+        </div>
+        <div class="d-flex justify-content-center">
+            <h2 id="creatingplace">Start your own expedition.</h2>
+        </div>
+        <div class="d-flex justify-content-center">
+            <form class="form-inline" onsubmit="createexpedition(this['exp'].value); return false;">
+                {% csrf_token %}
+                <div class="input-group">
+                    <input class="form-control rounded-pill" id="expeditionname" aria-label="Custom Expedition" name="exp">
+                    <div class="input-group-append">
+                        <button id="customsubmit" class="btn btn-outline-primary rounded-pill" type="submit">Submit</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    {% else %}
+    <h2 class="d-flex justify-content-center">This feature isn't available to you.</h2>
+    {% endif %}
+{% endif %}
+{% endblock %}

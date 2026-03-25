@@ -1,0 +1,246 @@
+{% extends "layout.html" %}
+{% load static %}
+
+{% block title %} Voyage | {{expedition.expedition_name}} {% endblock %}
+
+{% block script3 %}
+<script>
+  var questions = []
+  var answers = []
+  var answered = []
+  var correct_answers = []
+  var correct_answers_ref = []
+  document.addEventListener('DOMContentLoaded', function () {
+    document.getElementById("tolesson").style.display = 'block'
+    document.getElementById("lessonplaceholder").style.display = 'none'
+    document.getElementById("toquiz").style.display = 'none'
+    document.getElementById("quiz").style.display = 'none'
+    document.getElementById("afterquiz").style.display = 'none'
+
+  })
+
+  function fetchlesson() {
+    try {
+      document.getElementById("tolesson").style.display = 'none'
+      document.getElementById("lessonplaceholder").style.display = 'block'
+      var qasection = document.getElementById("qasection")
+      qasection.style.display = 'none'
+      fetch('/create_lesson_expd', {
+        method: 'POST',
+        body: JSON.stringify({
+          expedition_name: document.getElementById("expname").innerHTML
+        })
+      })
+        .then(response => response.json())
+        .then(result => {
+          qasection.style.display = 'block'
+          var questionsx = result['questions']
+          var answersx = result['answers']
+          const qdiv = document.getElementById("questionbuttons")
+          for (var i = 0; i < questionsx.length; i++) {
+            (function () {
+              var button = document.createElement('button');
+              button.textContent = questionsx[i];
+              var answertoquestion = answersx[i];
+              button.className = "btn btn-sm btn-outline-primary";
+              button.addEventListener('click', function () {
+                document.getElementById("qa").innerHTML = answertoquestion;
+              });
+              qdiv.appendChild(button);
+            })();
+          }
+          console.log(result);
+          var lessong = result['lesson']
+          document.getElementById("lessonpaa").innerHTML = lessong
+        });
+    }
+    catch (err) {
+      console.log(err)
+      document.getElementById("lessonpaa").innerHTML = "Something went wrong. Go back and try again."
+    }
+  }
+  function completelesson() {
+    document.getElementById("homereturn").disabled = true
+    fetch('/complete_lesson_exp', {
+      method: 'POST',
+      body: JSON.stringify({
+        expedition_name: document.getElementById("expname").innerHTML
+      })
+    })
+      .then(response => response.json())
+      .then(result => {
+        if (result['message'] % 3 == 0) {
+          document.getElementById("bigtitle").innerHTML = "Checkpoint"
+          document.getElementById("lessonplaceholder").style.display = 'none'
+          document.getElementById("toquiz").style.display = 'block'
+        }
+        else {
+          location.reload()
+        }
+      });
+  }
+  function skipquiz() {
+    document.getElementById("skipquiz").disabled = true
+    location.reload()
+  }
+  function gotoquiz() {
+    document.getElementById("toquiz").style.display = 'none'
+    document.getElementById("quiz").style.display = 'block'
+    fetch('/make_exp_quiz', {
+      method: 'POST',
+      body: JSON.stringify({
+        expedition_name: document.getElementById("expname").innerHTML,
+        chapter_name: document.getElementById("chaptername00").innerHTML
+      })
+    })
+      .then(response => response.json())
+      .then(result => {
+        console.log(result);
+        questions = result['questions']
+        answers = result['answers']
+        correct_answers = result['correct_answers']
+        correct_answers_ref = result['correct_answers'].slice()
+        loadnext()
+      });
+  }
+  function loadnext() {
+    console.log(answers)
+    if (questions.length == 0) {
+      document.getElementById("quiz").style.display = 'none'
+      finishquiz()
+      return
+    }
+    document.getElementById("question").innerHTML = questions.shift();
+    var newanswers = answers.shift();
+    newanswers.push(correct_answers_ref.shift())
+    newanswers.sort(() => Math.random() - 0.5);
+    newanswers = [...new Set(newanswers)];
+    document.getElementById("answers").innerHTML = ''
+    newanswers.forEach(answer => {
+      if (answer.length > 1) {
+        var button = document.createElement('button');
+        button.classList.add('btn', 'btn-primary', 'mt-3');
+        button.textContent = answer;
+        button.onclick = function () {
+          addanswer(answer);
+        };
+        document.getElementById("answers").appendChild(button);
+      }
+    });
+  }
+  function addanswer(answer) {
+    answered.push(answer);
+    console.log(answered)
+    loadnext();
+  }
+  function finishquiz() {
+    var correct = 0;
+    console.log(answered)
+    console.log(correct_answers)
+    for (var i = 0; i < answered.length; i++) {
+      if (answered[i] == correct_answers[i]) {
+        correct++;
+      }
+    }
+    var score = correct / answered.length;
+    fetch('/complete_quiz_exp', {
+      method: 'POST',
+      body: JSON.stringify({
+        expedition_name: document.getElementById("expname").innerHTML,
+        score: score
+      })
+    }).then(response => response.json()).then(result => {
+      console.log(result);
+      document.getElementById("afterquiz").style.display = 'block'
+      document.getElementById("quiz").style.display = 'none'
+      document.getElementById("afterquizmessage").innerHTML = result['message']
+    });
+  }
+
+</script>
+{% endblock %}
+
+{% block body %}
+<div class="container">
+  <div class="row">
+    <div class="col-md-12">
+      <h1 class="display-1 mb-5" id="bigtitle">Expeditions</h1>
+    </div>
+  </div>
+  <p><strong>Looking for a way to find new topics based on your interests? Receive tailored lessons at <a
+        href="{% url 'index' %}">Explore</a>!</strong></p>
+  <div id="tolesson">
+    <div class="row">
+      <h3>Expedition progress:</h3>
+      <div class="col-md-12">
+        <div class="progress mb-5">
+          <div class="progress-bar bg-success" role="progressbar" style="width: {{percent_completed}}%;"
+            aria-valuenow="{{percent_completed}}" aria-valuemin="0" aria-valuemax="100">{{percent_completed}}%</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col-md-12">
+        <h1 id="expname">{{expedition.expedition_name}}</h1>
+        <h3>{{chapters_completed}} / {{total_chapters}} chapters completed ({{percent_completed}}%)</h3>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col-md-12">
+        <div class="card mt-5">
+          <div class="card-body">
+            <h1 id="chaptername00" class="card-title">{{current_chapter.chapter_name}}</h1>
+            <h3 class="card-subtitle mb-2 text-muted">Lesson #{{curr_lesson}}</h3>
+            <div>
+              <button class="btn btn-lg btn-success" id="choose-title" onclick="fetchlesson()"><i
+                  class="fas fa-play-circle"></i> Let's go</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="row">
+    <div id="lessonplaceholder" class="card mx-auto col-md-12" style="width: 80%;">
+      <div class="card-body col-md-12">
+        <h1 class="card-title" id="xy"></h1>
+        <h5 id="lessonpaa" class="card-title">Creating your lesson... This may take a few moments.</h5>
+        <div id="qasection">
+          <hr>
+          <h2>FAQs</h2>
+          <div>
+            <h4 id="qa"></h4>
+          </div>
+          <div class='row' id="questionbuttons"></div>
+        </div>
+        <button class="btn btn-sm btn-primary btn-block" id="homereturn" , onclick="completelesson()">Complete
+          Lesson</button>
+      </div>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-md-8 col-lg-6" id="toquiz">
+      <h2>Ready to move on to the next chapter?</h2>
+      <h3>Take a Checkpoint quiz to move on.</h3>
+      <div>
+        <button class="btn btn-sm btn-primary" id="goquiz" onclick="gotoquiz()">Go</button>
+        <!-- <button class="btn btn-sm btn-primary mr-3" id="skipquiz" onclick="skipquiz()">Skip Checkpoint</button> -->
+      </div>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-md-8 col-lg-6" id="quiz">
+      <h2 class="mb-4" id="question">Loading...</h2>
+      <div class="d-flex flex-column" id="answers"></div>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-md-8 col-lg-6" id="afterquiz">
+      <h2 id="afterquizmessage"></h2>
+      <button class="btn btn-sm btn-primary" onclick="location.reload()">Back to Expedition</button>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,47 @@
+{% extends "layout.html" %}
+{% load static %}
+
+{% block title %} Voyage | Messages {% endblock %}
+
+{% block body %}
+<div class="container">
+    <h1 class="display-1">Messages</h1>
+    <hr>
+    <div class="row">
+        <div class="col-md-4">
+            <h3 class="d-flex justify-content-center">Conversations</h3>
+            <ul class="list-group">
+                <button class="list-group-item">
+                    <a>User XYZ</a>
+                </button>
+                <button class="list-group-item">
+                    <a>User ABC</a>
+                </button>
+                <button class="list-group-item">
+                    <a>User PQR</a>
+                </button>
+            </ul>
+        </div>
+        <div class="col-md-8">
+            <h2>User XYZ</h2>
+            <hr>
+            <div class="messages">
+                <div>
+                    <span>August 26, 2023, 3:30 PM</span>
+                    <p><strong>{{user.username}}: </strong>Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
+                </div>
+                <div>
+                    <span>August 26, 2023, 3:35 PM</span>
+                    <p><strong>{{user.username}}: </strong>Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
+                </div>
+            </div>
+            <form method="post" action="#">
+                <div class="form-group">
+                    <textarea class="form-control" name="content" placeholder="Type your message here"></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Send</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

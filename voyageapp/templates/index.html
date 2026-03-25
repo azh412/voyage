@@ -1,0 +1,509 @@
+{% extends "layout.html" %}
+{% load static %}
+
+{% block title %} Voyage {% endblock %}
+{% block body %}
+{% if user.onboarded %}
+{% if user.is_authenticated %}
+{% block script2 %}
+<script>
+    var queryplaceholders = [
+        "how to cook better",
+        "soccer dribbling tricks",
+        "how to start programming",
+        "sports analysis",
+        "how to be more productive"
+    ]
+    document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById("choosetitle").style.display = 'none'
+        document.getElementById("skiptitle").style.display = 'none'
+        document.getElementById("lessonplaceholder").style.display = 'none'
+        document.getElementById("disliketitle").style.display = 'none'
+        document.getElementById("searchquery").placeholder = queryplaceholders[Math.floor(Math.random() * queryplaceholders.length)];
+        genlessons()
+    })
+        var x = []
+        var titles = []
+        var topics = []
+        var questions = []
+        var answers = []
+        var topics_impressioned = []
+        var feedback = []
+        // document.querySelector('#next_topic').addEventListener('click', add_interest);
+        // document.querySelector('#sub2').addEventListener('click', step2transition);
+        function skip(strength) {
+            var titleplaceholder = document.getElementById("title")
+            var feedbackfactor = 0
+            if(strength == "hard"){
+                feedbackfactor = -1.2
+            }
+            else{
+                feedbackfactor = -0.3
+            }
+            feedback.push(feedbackfactor)
+            topics_impressioned.push(topics.shift())
+            if(titles.length == 0){
+                titleplaceholder.innerHTML = "Generating more lessons..."
+                document.getElementById("choosetitle").style.display = 'none'
+                document.getElementById("skiptitle").style.display = 'none'
+                document.getElementById("disliketitle").style.display = 'none'
+                sendfeedback()
+                genlessons()
+            }
+            else{
+                titleplaceholder.innerHTML = titles.shift()
+            }
+        }
+        function genlessons(){
+            if(titles.length == 0){
+                fetch('/gettitles', {method: 'GET'})
+                .then(response => response.json())
+                .then(result => {
+                    if(titles.length > 0){
+                        return
+                    }
+                    titles = result['titles']
+                    topics = result['topics']
+                    document.getElementById("choosetitle").style.display = 'inline-block'
+                    document.getElementById("skiptitle").style.display = 'inline-block'
+                    document.getElementById("disliketitle").style.display = 'inline-block'
+                    title = titles.shift()
+                    document.getElementById("title").innerHTML = title
+                    console.log(result);
+                });
+            }
+        }
+        function fetchlesson(){
+            try {
+                var qasection = document.getElementById("qasection")
+                qasection.style.display = 'none'
+                feedback.push(1.5)
+                topics_impressioned.push(topics.shift())
+                sendfeedback()
+                var titleplaceholder = document.getElementById("title").innerHTML
+                document.getElementById("lessonsplaceholder").style.display = 'none'
+                document.getElementById("lessonplaceholder").style.display = 'block'
+                document.getElementById("x").innerHTML = ""
+                document.getElementById("xy").innerHTML = titleplaceholder
+                fetch('/create_lesson', {
+                method: 'POST',
+                body: JSON.stringify({
+                    title: titleplaceholder
+                })
+                })
+                .then(response => response.json())
+                .then(result => {
+                    qasection.style.display = 'block'
+                    questions = result['questions']
+                    answers = result['answers']
+                    const qdiv = document.getElementById("questionbuttons")
+                    for (var i = 0; i < questions.length; i++) {
+                    (function() {
+                        var button = document.createElement('button');
+                        button.textContent = questions[i];
+                        var answertoquestion = answers[i];
+                        button.className = "btn btn-sm btn-outline-primary";
+                        button.addEventListener('click', function() {
+                        document.getElementById("qa").innerHTML = answertoquestion;
+                        });
+                        qdiv.appendChild(button);
+                    })();
+                    }
+                    console.log(result);
+                    var lessong = result['lesson']
+                    document.getElementById("lessonpaa").innerHTML = lessong
+                });
+            }
+            catch(err) {
+                console.log(err)
+                document.getElementById("lessonpaa").innerHTML = "Something went wrong. Go back and try again."
+            }
+        }
+        function sendfeedback(){
+            fetch('/lesson_feedback', {
+            method: 'POST',
+            body: JSON.stringify({
+                topics: topics_impressioned,
+                feedback: feedback
+            })
+            })
+            .then(response => response.json())
+            .then(result => {
+                topics_impressioned = []
+                feedback = []
+                console.log(result)
+            });
+        }
+        function search(){
+            var qasection = document.getElementById("qasection")
+            qasection.style.display = 'none'
+            document.getElementById("lessonsplaceholder").style.display = 'none'
+            document.getElementById("lessonplaceholder").style.display = 'block'
+            document.getElementById("lessonpaa").innerHTML = 'Creating your lesson...'
+            var query = document.getElementById("searchquery").value
+            if(query.length > 111){
+                document.getElementById("searchquery").value = ""
+                return
+            }
+            document.getElementById("searchquery").value = ""
+            document.getElementById("x").innerHTML = "Getting ready to teach you about '" + query + "'..."
+            try{
+                fetch('/search', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        query: query
+                    })
+                })
+                .then(response => response.json())
+                .then(result => {
+                    document.getElementById("x").innerHTML = ""
+                    qasection.style.display = 'block'
+                    questions = result['questions']
+                    answers = result['answers']
+                    const qdiv = document.getElementById("questionbuttons")
+                    for (var i = 0; i < questions.length; i++) {
+                    (function() {
+                        var button = document.createElement('button');
+                        button.textContent = questions[i];
+                        var answertoquestion = answers[i];
+                        button.className = "btn btn-sm btn-outline-primary col";
+                        button.addEventListener('click', function() {
+                            document.getElementById("qa").innerHTML = answertoquestion;
+                        });
+                        qdiv.appendChild(button);
+                    })();
+                    }
+                    console.log(result);
+                    var lessong = result['lesson']
+                    document.getElementById("lessonpaa").innerHTML = lessong
+                });
+            }
+            catch(err) {
+                console.log(err)
+                document.getElementById("lessonpaa").innerHTML = "Something went wrong. Go back and try again."
+            }
+        }
+        function completelesson(){
+            document.getElementById("homereturn").disabled = true
+            fetch('/complete_lesson', {method: 'GET'})
+            .then(response => response.json())
+            .then(result => {
+                location.reload()
+            });
+        }
+</script>
+{% endblock %}
+<h1 class="display-1">Explore</h1>
+<form class="form-inline" onsubmit="search(); return false;">
+    {% csrf_token %}
+    <div class="input-group">
+        <input class="form-control rounded-pill" id="searchquery" type="search" placeholder="Search" aria-label="Search" name="query">
+        <div class="input-group-append">
+            <button class="btn btn-outline-primary rounded-pill" type="submit">Search</button>
+        </div>
+    </div>
+</form>
+&nbsp;
+<p><strong>Looking for a better way to learn a specific topic using Voyage? Take a look at <a href="{% url 'expeditions' %}">Expeditions</a>!</strong></p>
+<div id="infolesson">
+    &nbsp;
+    <h2 id="x">Welcome back. We have some lessons waiting for you.</h1>
+</div>
+<div id="lessonsplaceholder">
+    <h1 id="title">Fetching your lessons...</h1>
+    <button class="btn btn-sm btn-outline-primary" id="choosetitle", onclick="fetchlesson()" style="margin-right: 3px;">Let's go</button>
+    <button class="btn btn-sm btn-outline-primary" id="skiptitle", onclick="skip('soft')" style="margin-right: 3px;">Next</button>
+    <button class="btn btn-sm btn-outline-primary" id="disliketitle", onclick="skip('hard')" style="margin-right: 3px;">Not Interested</button>
+</div>
+<div id="lessonplaceholder" class="card mx-auto" style="width: 80%;">
+    <div class="card-body">
+        <h1 class="card-title" id="xy"></h1>
+        <h5 id="lessonpaa" class="card-title">Creating your lesson... This may take a few moments.</h5>
+        <div id="qasection">
+            <hr>
+            <h2>FAQs</h2>
+            <div><h4 id="qa"></h4></div>
+            <div class='row' id="questionbuttons"></div>
+        </div>
+        <button class="btn btn-sm btn-primary btn-block" id="homereturn", onclick="completelesson()">Complete Lesson</button>
+    </div>
+</div>
+{% endif %}
+{% else %}
+{% if user.is_authenticated %}
+{% block script %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById("sub2").style.display = 'none'
+        document.getElementById("step2div").style.display = 'none'
+    })
+        var x = []
+        var titles = []
+        var topics = []
+        var ratings = []
+        // document.querySelector('#next_topic').addEventListener('click', add_interest);
+        // document.querySelector('#sub2').addEventListener('click', step2transition);
+        function add_interest() {
+            var topic = document.getElementById("topic").value
+            console.log(topic)
+            if(topic.length > 35){
+                document.getElementById("info1").innerHTML = "Shorten that up for me please. " + (4 - x.length.toString()) + " more."
+                return
+            }
+            if(topic.length < 2){
+                document.getElementById("info1").innerHTML = "Too short. " + (4 - x.length.toString()) + " more."
+                return
+            }
+            if(topic != '') {
+                x.push(topic)
+                if(x.length >= 4){
+                    document.getElementById("sub2").style.display = 'block'
+                    document.getElementById("info1").innerHTML = "Alright, that should be enough for us to know what you're into. Feel free to add more to improve the process. When you're done, press 'I'm done'."
+                }
+                else{
+                    document.getElementById("info1").innerHTML = "Great! Give me " + (4 - x.length.toString()) + " more!"
+                }
+            }
+            else{
+                document.getElementById("info1").innerHTML = "Give me something!"
+            }
+            console.log(x)
+            document.getElementById("topic").value = ""
+        }
+        function step2transition(){
+            fetch('/initialize_interests', {
+            method: 'POST',
+            body: JSON.stringify({
+                interests: x
+            })
+            })
+            .then(response => response.json())
+            .then(result => {
+                if("message" in result){
+                    if(x.length == parseInt(result['message'])){
+                        console.log("success")
+                        document.getElementById("initial_interests").style.display = 'none'
+                        document.getElementById("step2div").style.display = 'block'
+                        document.getElementById("step2subdiv").style.display = 'none'
+                        fine_tine_interests()
+                    }
+                }
+                else {
+                    x = result['cleaned']
+                    document.getElementById("info1").innerHTML = "We couldn't understand one or more of your interests. Give us some other ones."
+                }
+                console.log(result);
+            });
+        }
+        function fine_tine_interests(){
+            fetch('/itlt', {method: 'GET'})
+            .then(response => response.json())
+            .then(result => {
+                if("message" in result){
+                    document.getElementById("ctoinfo").innerHTML = "All done. Refresh your page."
+                    location.reload()
+                }
+                if(!("error" in result)){
+                    if(("titles" in result) && ("topics" in result)){
+                        titles = result['titles']
+                        topics = result['topics']
+                        document.getElementById("step2subdiv").style.display = 'block'
+                        document.getElementById("ctoinfo").innerHTML = "On a scale of 1-10, how interested are you in the following topics?"
+                        title = titles.shift()
+                        document.getElementById("s2_title_placeholder").innerHTML = title
+                    }
+                }
+                console.log(result);
+            });
+        }
+        function subswitch(){
+            var rating = Number(document.getElementById("ltrating").value)
+            if(rating == NaN){
+                document.getElementById("s2info").innerHTML = "goofy"
+                document.getElementById("ltrating").value = ''
+            }
+            else if(rating > 10 || rating < 0){
+                document.getElementById("s2info").innerHTML = "I said 1-10."
+            }
+            else if(document.getElementById("ltrating").value == ""){
+                document.getElementById("s2info").innerHTML = "Please enter a rating to move on."
+            }
+            else {
+                document.getElementById("ltrating").value = ''
+                ratings.push(rating)
+                console.log(ratings)
+                if(titles.length != 0) {
+                    title = titles.shift()
+                    document.getElementById("s2_title_placeholder").innerHTML = title
+                }
+                else {
+                    var sum = ratings.reduce((a, b) => a + b);
+                    var avg = sum / ratings.length
+                    console.log(avg)
+                    var likedtopics = []
+                    for(let x = 0; x < ratings.length; x++){
+                        if(ratings[x] >= avg){
+                            likedtopics.push(topics[x])
+                        }
+                    }
+                    console.log(likedtopics)
+                    fetch('/save_likes', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        likes: likedtopics
+                    })
+                    })
+                    .then(response => response.json())
+                    .then(result => {
+                        document.getElementById("ctoinfo").innerHTML = "Alright! Fetching some more lesson titles for you..."
+                        document.getElementById("s2_title_placeholder").innerHTML = ""
+                        fine_tine_interests()
+                        console.log(result);
+                    });
+                }
+            }
+        }
+</script>
+{% endblock %}
+&nbsp;
+<h1 class="display-1 d-flex justify-content-center">Boarding</h1>
+<div id="initial_interests", style="text-align: center;">
+    <h1>Welcome to Voyage.</h1>
+    <h2><i>Explore, discover, learn.</i></h2>
+    <h4 id="info1">Give us some of your interests so we know what we're working with.</h4>
+    <div id="topics_in">
+        <div class="form-group">
+            <input class="form-control" id="topic" placeholder="Topic">
+        </div>
+        <button class="btn btn-sm btn-primary" id="next_topic", onclick="add_interest()">Submit</button>
+        <button class="btn btn-sm btn-primary" style="text-align: center;" id="sub2", onclick="step2transition()">I'm done</button>
+    </div>
+</div>
+
+<div id="step2div", style="text-align: center;">
+
+    <h1 id="ctoinfo">Great! Generating some example lesson titles for you...</h1>
+    <div id="step2subdiv">
+        <h2 id="s2_title_placeholder"></h2>
+        <h4 id="s2info"></h4>
+        <div id="rin">
+        <input type="number" class="form-control" placeholder="Rating" id="ltrating">
+        <button class="btn btn-sm btn-primary" id="next_title", onclick="subswitch()">Next Lesson Title</button>
+    </div>
+    </div>
+
+</div>
+
+
+{% else %}
+<div style="margin: auto; width: 1280px; height: 1612px; position: relative;">
+    <img style="width: 1280px; height: 761px; left: 0px; top: 0px; position: absolute" src="{% static 'sky.jpg' %}" />
+    <div style="left: 341px; top: 112px; position: absolute; text-align: center; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 28px; display: inline-flex">
+        <div style="color: black; font-size: 168px; font-family: Bricolage Grotesque; font-weight: 600; word-wrap: break-word; text-align: center; line-height: 1;">Voyage</div>
+        <div style="text-align: center"><span style="color: black; font-size: 40px; font-family: Bricolage Grotesque; font-weight: 450; word-wrap: break-word">Explore, discover, </span><span style="color: black; font-size: 40px; font-family: Bricolage Grotesque; font-weight: 700; word-wrap: break-word">learn</span><span style="color: black; font-size: 40px; font-family: Bricolage Grotesque; font-weight: 600; word-wrap: break-word">.</span></div>
+        <div style="color: black; font-size: 32px; font-family: Bricolage Grotesque; font-weight: 400; word-wrap: break-word">Learn anything on Voyage.</div>
+        <img style="width: 229px; height: 220px" src="{% static 'shiplanding.png' %}" />
+        
+      </div>
+      
+      
+      
+    <!-- <div style="width: 1280px; height: 125px; left: 0px; top: 0px; position: absolute">
+      <div style="width: 1280px; height: 125px; left: 0px; top: 0px; position: absolute; background: #D9D9D9"></div>
+      <div style="width: 617px; height: 99px; left: 331px; top: 13px; position: absolute; justify-content: flex-start; align-items: center; gap: 39px; display: inline-flex">
+        <div style="text-align: center; color: #838080; font-size: 30px; font-family: Bricolage Grotesque; font-weight: 300; word-wrap: break-word">Sign Up</div>
+        <img style="width: 337px; height: 99px" src="https://via.placeholder.com/337x99" />
+        <div style="text-align: center; color: #838080; font-size: 30px; font-family: Bricolage Grotesque; font-weight: 300; word-wrap: break-word">Sign In</div>
+      </div>
+    </div> -->
+    
+    <div style="left: 63px; top: 859px; position: absolute; justify-content: flex-start; align-items: flex-start; gap: 5px; display: inline-flex">
+      <div style="flex-direction: column; justify-content: flex-start; align-items: center; gap: 3px; display: inline-flex">
+        <div style="color: black; font-size: 66px; font-family: Bricolage Grotesque; font-weight: 600; word-wrap: break-word">Explore</div>
+        <div style="width: 379px; height: 104px; text-align: center; color: black; font-size: 24px; font-family: Bricolage Grotesque; font-weight: 600; word-wrap: break-word">Find fascinating topics you'll actually want to learn about through our AI-powered algorithm.<br/></div>
+      </div>
+      <div style="flex-direction: column; justify-content: flex-start; align-items: center; display: inline-flex">
+        <div style="color: black; font-size: 66px; font-family: Bricolage Grotesque; font-weight: 600; word-wrap: break-word">Discover</div>
+        <div style="width: 405px; height: 74px; text-align: center; color: black; font-size: 24px; font-family: Bricolage Grotesque; font-weight: 600; word-wrap: break-word">Receive tailored lessons based on your interests, no matter what your passions are.<br/></div>
+      </div>
+      <div style="flex-direction: column; justify-content: flex-start; align-items: center; gap: 7px; display: inline-flex">
+        <div style="color: black; font-size: 66px; font-family: Bricolage Grotesque; font-weight: 600; word-wrap: break-word">Learn</div>
+        <div style="width: 360px; height: 102px; text-align: center; color: black; font-size: 24px; font-family: Bricolage Grotesque; font-weight: 600; word-wrap: break-word">Develop a lifelong habit of learning with engaging and comprehensive lessons that don't just inform, but teach.<br/></div>
+      </div>
+      
+    </div>
+    <img style="width: 870px; height: 482px; left: 205px; top: 1130px; position: absolute" src="{% static 'promonobg.png' %}" />
+  </div>
+  <div class="d-flex justify-content-center">
+    <p class="lead">Unlock your potential and unlock your passion, with the power of AI.</p>
+</div>
+  <div class="d-flex justify-content-center">
+    <h4>Looking for a way to find new topics based on your interests? Receive tailored lessons at <a href="{% url 'index' %}" class="ml-2">Explore</a>!</h4>
+</div>
+<div class="d-flex justify-content-center">
+    <h4>Looking for a better way to learn a specific topic using Voyage? Take a look at <a href="{% url 'expeditions' %}" class="ml-2">Expeditions</a>!</h4>
+</div>
+<!-- <section class="hero-section">
+    <div class="container">
+        <div class="row">
+            <div class="col-md-6">
+                <h1 style="font-family: 'Bricolage Grotesque', sans-serif;" class="display-1 bigvoy"><strong>Voyage</strong></h1>
+                &nbsp;
+                <h1>Explore, discover, <mark>learn.</mark></h1>
+                <p class="lead">Unlock your potential and unlock your passion, with the power of AI.</p>
+                <a href="/register" class="btn btn-primary">Get Started</a>
+            </div>
+            <div class="col-md-6">
+                <img src="{% static 'anothaone.jpg' %}" alt="Voyage" class="img-fluid">
+            </div>
+        </div>
+    </div>
+</section>
+<section class="features-section">
+    &nbsp;
+    <div class="container">
+        <div class="row">
+            <div class="col-md-4">
+                <div class="feature-box">
+                    <i class="fa fa-search"></i>
+                    <h2>Explore</h2>
+                    <p>Find fascinating topics you'll actually want to learn about through our AI-powered algorithm.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="feature-box">
+                    <i class="fa fa-cogs"></i>
+                    <h2>Discover</h2>
+                    <p>Receive tailored lessons based on your interests, no matter what your passions are.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="feature-box">
+                    <i class="fa fa-rocket"></i>
+                    <h2>Learn</h2>
+                    <p>Develop a lifelong habit of learning with engaging and comprehensive lessons that don't just inform, but teach.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+&nbsp;
+<div class="d-flex justify-content-center">
+    <h4>Looking for a way to find new topics based on your interests? Receive tailored lessons at <a href="{% url 'index' %}" class="ml-2">Explore</a>!</h4>
+</div>
+<div class="d-flex justify-content-center">
+    <h4>Looking for a better way to learn a specific topic using Voyage? Take a look at <a href="{% url 'expeditions' %}" class="ml-2">Expeditions</a>!</h4>
+</div> -->
+
+
+<!-- include jquery lib -->
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js" crossorigin="anonymous"></script>
+
+<!-- include fitty lib -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fitty/2.2.6/fitty.min.js"></script>
+<script>
+    fitty('h1');
+</script>
+{% endif %}
+{% endif %}
+{% endblock %}
