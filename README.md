@@ -1,9 +1,9 @@
 # Voyage
+(made circa 2023)
 
 Voyage is a dynamic, Django-based learning platform that leverages AI to generate personalized educational content. Instead of pre-recorded courses, Voyage creates custom-tailored "Expeditions" (course-based learning paths for specific topics), complete with lessons, quizzes, and adaptive recommendations based on a user's evolving interests.
 
 ![promo pic](noweb.png)
-(made circa 2023)
 
 ## Core Features
 
